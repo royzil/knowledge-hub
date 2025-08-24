@@ -471,6 +471,7 @@
     </div>
 
     <script>
+        // Global variables
         let currentSection = null;
         let data = {
             recipes: [],
@@ -479,11 +480,20 @@
             notes: []
         };
 
-        // Load data from localStorage on page load
+        // Utility functions
+        function isLocalStorageAvailable() {
+            try {
+                return typeof(Storage) !== "undefined" && window.localStorage;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Load data from localStorage
         function loadData() {
             try {
-                if (typeof(Storage) !== "undefined" && localStorage) {
-                    const savedData = localStorage.getItem('knowledgeHubData');
+                if (isLocalStorageAvailable()) {
+                    const savedData = window.localStorage.getItem('knowledgeHubData');
                     if (savedData) {
                         data = JSON.parse(savedData);
                     }
@@ -497,8 +507,8 @@
         // Save data to localStorage
         function saveData() {
             try {
-                if (typeof(Storage) !== "undefined" && localStorage) {
-                    localStorage.setItem('knowledgeHubData', JSON.stringify(data));
+                if (isLocalStorageAvailable()) {
+                    window.localStorage.setItem('knowledgeHubData', JSON.stringify(data));
                 }
             } catch (error) {
                 console.warn('Could not save to localStorage:', error);
@@ -507,10 +517,15 @@
 
         // Update section counts
         function updateCounts() {
-            document.getElementById('recipesCount').textContent = data.recipes.length;
-            document.getElementById('linksCount').textContent = data.links.length;
-            document.getElementById('photosCount').textContent = data.photos.length;
-            document.getElementById('notesCount').textContent = data.notes.length;
+            const recipesCount = document.getElementById('recipesCount');
+            const linksCount = document.getElementById('linksCount');
+            const photosCount = document.getElementById('photosCount');
+            const notesCount = document.getElementById('notesCount');
+            
+            if (recipesCount) recipesCount.textContent = data.recipes.length;
+            if (linksCount) linksCount.textContent = data.links.length;
+            if (photosCount) photosCount.textContent = data.photos.length;
+            if (notesCount) notesCount.textContent = data.notes.length;
         }
 
         // Show add modal
@@ -521,18 +536,20 @@
             const urlGroup = document.getElementById('urlGroup');
             const imageGroup = document.getElementById('imageGroup');
             
+            if (!modal || !modalTitle) return;
+            
             // Configure modal based on section
             modalTitle.textContent = `Add ${section.charAt(0).toUpperCase() + section.slice(1, -1)}`;
             
             if (section === 'links') {
-                urlGroup.style.display = 'block';
-                imageGroup.style.display = 'none';
+                if (urlGroup) urlGroup.style.display = 'block';
+                if (imageGroup) imageGroup.style.display = 'none';
             } else if (section === 'photos') {
-                urlGroup.style.display = 'none';
-                imageGroup.style.display = 'block';
+                if (urlGroup) urlGroup.style.display = 'none';
+                if (imageGroup) imageGroup.style.display = 'block';
             } else {
-                urlGroup.style.display = 'none';
-                imageGroup.style.display = 'none';
+                if (urlGroup) urlGroup.style.display = 'none';
+                if (imageGroup) imageGroup.style.display = 'none';
             }
             
             modal.style.display = 'flex';
@@ -540,37 +557,51 @@
 
         // Close modal
         function closeModal() {
-            document.getElementById('addModal').style.display = 'none';
-            document.getElementById('addForm').reset();
+            const modal = document.getElementById('addModal');
+            const form = document.getElementById('addForm');
+            
+            if (modal) modal.style.display = 'none';
+            if (form) form.reset();
         }
 
         // Show section items
         function showSection(section) {
             currentSection = section;
-            document.getElementById('sectionsGrid').style.display = 'none';
-            document.getElementById('itemsList').style.display = 'grid';
-            document.getElementById('backButton').style.display = 'flex';
+            const sectionsGrid = document.getElementById('sectionsGrid');
+            const itemsList = document.getElementById('itemsList');
+            const backButton = document.getElementById('backButton');
+            
+            if (sectionsGrid) sectionsGrid.style.display = 'none';
+            if (itemsList) itemsList.style.display = 'grid';
+            if (backButton) backButton.style.display = 'flex';
             
             displayItems(section);
         }
 
         // Go back to sections
         function goBack() {
-            document.getElementById('sectionsGrid').style.display = 'grid';
-            document.getElementById('itemsList').style.display = 'none';
-            document.getElementById('backButton').style.display = 'none';
+            const sectionsGrid = document.getElementById('sectionsGrid');
+            const itemsList = document.getElementById('itemsList');
+            const backButton = document.getElementById('backButton');
+            
+            if (sectionsGrid) sectionsGrid.style.display = 'grid';
+            if (itemsList) itemsList.style.display = 'none';
+            if (backButton) backButton.style.display = 'none';
+            
             currentSection = null;
         }
 
         // Display items for a section
         function displayItems(section) {
             const itemsList = document.getElementById('itemsList');
-            const items = data[section];
+            if (!itemsList) return;
+            
+            const items = data[section] || [];
             
             if (items.length === 0) {
                 itemsList.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #666;">
-                        <span style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">📦</span>
+                        <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">📦</div>
                         <p style="font-size: 1.2rem;">No ${section} yet. Add your first one!</p>
                     </div>
                 `;
@@ -607,7 +638,7 @@
                         ${content}
                     </div>
                 `;
-            })..join('');
+            }).join('');
         }
 
         // Delete item
@@ -620,69 +651,84 @@
             }
         }
 
-        // Handle form submission
-        document.getElementById('addForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const title = document.getElementById('itemTitle').value;
-            const description = document.getElementById('itemDescription').value;
-            const url = document.getElementById('itemUrl').value;
-            const imageUrl = document.getElementById('itemImage').value;
-            
-            const newItem = {
-                title,
-                description,
-                date: new Date().toISOString()
-            };
-            
-            if (currentSection === 'links' && url) {
-                newItem.url = url;
-            } else if (currentSection === 'photos' && imageUrl) {
-                newItem.imageUrl = imageUrl;
-            }
-            
-            data[currentSection].unshift(newItem);
-            saveData();
-            updateCounts();
-            closeModal();
-            
-            if (document.getElementById('itemsList').style.display === 'grid') {
-                displayItems(currentSection);
-            }
-        });
-
-        // Handle section card clicks
-        document.addEventListener('click', function(e) {
-            const sectionCard = e.target.closest('.section-card');
-            if (sectionCard && !e.target.closest('.add-button')) {
-                const section = sectionCard.dataset.section;
-                showSection(section);
-            }
-        });
-
-        // Handle back button
-        document.getElementById('backButton').addEventListener('click', goBack);
-
-        // Close modal when clicking outside
-        document.getElementById('addModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
-        });
-
-        // Initialize app when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize the application
+        function initializeApp() {
+            // Load saved data
             loadData();
-        });
-
-        // Fallback initialization if DOMContentLoaded already fired
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                loadData();
+            
+            // Set up form submission
+            const addForm = document.getElementById('addForm');
+            if (addForm) {
+                addForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const title = document.getElementById('itemTitle')?.value || '';
+                    const description = document.getElementById('itemDescription')?.value || '';
+                    const url = document.getElementById('itemUrl')?.value || '';
+                    const imageUrl = document.getElementById('itemImage')?.value || '';
+                    
+                    if (!title.trim()) return;
+                    
+                    const newItem = {
+                        title: title.trim(),
+                        description: description.trim(),
+                        date: new Date().toISOString()
+                    };
+                    
+                    if (currentSection === 'links' && url) {
+                        newItem.url = url.trim();
+                    } else if (currentSection === 'photos' && imageUrl) {
+                        newItem.imageUrl = imageUrl.trim();
+                    }
+                    
+                    if (!data[currentSection]) {
+                        data[currentSection] = [];
+                    }
+                    
+                    data[currentSection].unshift(newItem);
+                    saveData();
+                    updateCounts();
+                    closeModal();
+                    
+                    const itemsList = document.getElementById('itemsList');
+                    if (itemsList && itemsList.style.display === 'grid') {
+                        displayItems(currentSection);
+                    }
+                });
+            }
+            
+            // Set up section card clicks
+            document.addEventListener('click', function(e) {
+                const sectionCard = e.target.closest('.section-card');
+                if (sectionCard && !e.target.closest('.add-button')) {
+                    const section = sectionCard.dataset.section;
+                    if (section) showSection(section);
+                }
             });
+            
+            // Set up back button
+            const backButton = document.getElementById('backButton');
+            if (backButton) {
+                backButton.addEventListener('click', goBack);
+            }
+            
+            // Set up modal close
+            const addModal = document.getElementById('addModal');
+            if (addModal) {
+                addModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeModal();
+                    }
+                });
+            }
+        }
+
+        // Initialize when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
         } else {
-            loadData();
+            initializeApp();
         }
     </script>
 </body>
-</html>'
+</html>
